@@ -14,6 +14,23 @@ const CATEGORIES = [
   { value: 'other', label: 'Other' },
 ]
 
+type AnalysisCategory =
+  | 'pothole'
+  | 'garbage'
+  | 'streetlight'
+  | 'water_leak'
+  | 'road_damage'
+  | 'manhole'
+  | 'other'
+
+interface AnalysisResult {
+  category: AnalysisCategory
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  confidence: number
+  description: string
+  reasoning: string
+}
+
 export default function ReportIssue() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -25,7 +42,10 @@ export default function ReportIssue() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [loading, setLoading] = useState(false)
+  const [analysisLoading, setAnalysisLoading] = useState(false)
   const [error, setError] = useState('')
+  const [analysisError, setAnalysisError] = useState('')
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,6 +57,8 @@ export default function ReportIssue() {
     }
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))
+    setAnalysisResult(null)
+    setAnalysisError('')
     setError('')
   }
 
@@ -50,10 +72,75 @@ export default function ReportIssue() {
     return Object.keys(next).length === 0
   }
 
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(file)
+    })
+
+  const handleAnalyze = async () => {
+    if (!imageFile) return
+
+    setAnalysisLoading(true)
+    setAnalysisError('')
+    setAnalysisResult(null)
+
+    try {
+      const imageDataUrl = await readFileAsDataUrl(imageFile)
+      const session = await supabase.auth.getSession()
+      const token = session.data.session?.access_token
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-image-analysis`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ image: imageDataUrl, filename: imageFile.name }),
+      })
+
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload?.error || 'AI analysis failed. Please try again.')
+      }
+
+      setAnalysisResult(payload)
+    } catch (err) {
+      console.error('AI analysis error:', err)
+      if (err instanceof Error) {
+        setAnalysisError(err.message)
+      } else {
+        setAnalysisError('AI analysis failed. Please try again.')
+      }
+    } finally {
+      setAnalysisLoading(false)
+    }
+  }
+
+  const handleUseSuggestion = () => {
+  if (!analysisResult) return
+
+  setTitle(`Large ${analysisResult.category} reported`)
+  setCategory(analysisResult.category)
+  setDescription(analysisResult.description)
+
+  setErrors((prev) => ({
+    ...prev,
+    title: "",
+    category: "",
+    description: "",
+  }))
+}
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!validate()) return
+    if (!validate()) {
+  return
+}
+
     if (!user) {
       setError('You must be signed in to report an issue.')
       return
@@ -80,9 +167,11 @@ export default function ReportIssue() {
         imageUrl = publicUrlData.publicUrl
       }
 
+     console.log('ABOUT TO INSERT INTO ISSUES TABLE')
       const { data, error: insertError } = await supabase
         .from('issues')
         .insert({
+          user_id: user.id,
           title: title.trim(),
           description: description.trim(),
           category,
@@ -96,9 +185,16 @@ export default function ReportIssue() {
 
       navigate(`/issues/${data.id}`, { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit report. Please try again.')
-      setLoading(false)
-    }
+  console.error('SUBMIT REPORT ERROR:', err)
+
+  if (err instanceof Error) {
+    setError(err.message)
+  } else {
+    setError('Failed to submit report. Please try again.')
+  }
+
+  setLoading(false)
+}
   }
 
   return (
@@ -192,15 +288,79 @@ export default function ReportIssue() {
               <p className="mt-1 text-xs text-slate-500">Upload a photo of the issue. Max 10 MB.</p>
               <div className="mt-3">
                 {imagePreview ? (
-                  <div className="relative">
-                    <img src={imagePreview} alt="Preview" className="h-52 w-full rounded-xl object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => { setImageFile(null); setImagePreview('') }}
-                      className="absolute right-3 top-3 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-md hover:bg-white"
-                    >
-                      Remove
-                    </button>
+                  <div>
+                    <div className="relative">
+                      <img src={imagePreview} alt="Preview" className="h-52 w-full rounded-xl object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null)
+                          setImagePreview('')
+                          setAnalysisResult(null)
+                          setAnalysisError('')
+                        }}
+                        className="absolute right-3 top-3 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-md hover:bg-white"
+                      >
+                        Remove
+                      </button>
+                    </div>
+
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={handleAnalyze}
+                        disabled={analysisLoading || loading}
+                        className="btn-ghost w-full disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {analysisLoading ? 'Analyzing image…' : 'Analyze with AI'}
+                      </button>
+                      {analysisError && (
+                        <p className="mt-2 text-sm text-red-600">{analysisError}</p>
+                      )}
+                    </div>
+
+                    {analysisResult && (
+                      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">AI image analysis</p>
+                            <p className="mt-1 text-sm text-slate-600">Review the suggested issue details before submitting.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleUseSuggestion}
+                            className="btn-primary rounded-full px-4 py-2 text-sm"
+                          >
+                            Use Suggestion
+                          </button>
+                        </div>
+
+                        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</p>
+                            <p className="mt-2 text-sm font-semibold text-slate-900">{analysisResult.category}</p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Severity</p>
+                            <p className="mt-2 text-sm font-semibold text-slate-900">{analysisResult.severity}</p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:col-span-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Confidence</p>
+                            <p className="mt-2 text-sm font-semibold text-slate-900">{analysisResult.confidence}%</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Suggested description</p>
+                          <p className="mt-2 text-sm leading-relaxed text-slate-700">{analysisResult.description}</p>
+                        </div>
+
+                        <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Reasoning</p>
+                          <p className="mt-2 text-sm leading-relaxed text-slate-700">{analysisResult.reasoning}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <label
