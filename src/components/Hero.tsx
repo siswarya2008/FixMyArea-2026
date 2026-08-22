@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const HERO_IMAGE =
   'https://images.pexels.com/photos/17131944/pexels-photo-17131944.jpeg?auto=compress&cs=tinysrgb&w=1200'
@@ -13,6 +14,7 @@ const ISSUE_TAGS = [
 ]
 
 export default function Hero() {
+  const { role } = useAuth()
   return (
     <section id="top" className="relative overflow-hidden pt-28 pb-20 sm:pt-36 lg:pb-28">
       {/* Background accents */}
@@ -45,12 +47,12 @@ export default function Hero() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Link to="/report" className="btn-primary">
+            {role !== 'authority' && <Link to="/report" className="btn-primary">
               Report an Issue
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </Link>
+            </Link>}
             <Link to="/about" className="btn-ghost">
               See how it works
             </Link>

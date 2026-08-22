@@ -4,7 +4,8 @@ import Logo from './Logo'
 import { useAuth } from '../context/AuthContext'
 
 export default function AppNavbar() {
-  const { user, signOut } = useAuth()
+  const { user, role, signOut } = useAuth()
+  const isAuthority = role === 'authority'
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
@@ -35,15 +36,14 @@ export default function AppNavbar() {
         </Link>
 
         <div className="hidden items-center gap-9 md:flex">
-          <Link to="/dashboard" className="text-sm font-medium text-slate-600 transition-colors hover:text-brand-700">Dashboard</Link>
-          <Link to="/issues" className="text-sm font-medium text-slate-600 transition-colors hover:text-brand-700">My Issues</Link>
+          <Link to={isAuthority ? '/authority' : '/dashboard'} className="text-sm font-medium text-slate-600 transition-colors hover:text-brand-700">Dashboard</Link>
+          {isAuthority ? <Link to="/authority?status=pending" className="text-sm font-medium text-slate-600 transition-colors hover:text-brand-700">Pending / Reported</Link> : <Link to="/issues" className="text-sm font-medium text-slate-600 transition-colors hover:text-brand-700">My Issues</Link>}
+          {isAuthority && <Link to="/authority?status=in_progress" className="text-sm font-medium text-slate-600 transition-colors hover:text-brand-700">In Progress</Link>}
           <Link to="/about" className="text-sm font-medium text-slate-600 transition-colors hover:text-brand-700">About</Link>
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Link to="/report" className="btn-primary !py-2.5 !px-5 text-sm">
-            Report an Issue
-          </Link>
+          {!isAuthority && <Link to="/report" className="btn-primary !py-2.5 !px-5 text-sm">Report an Issue</Link>}
           {user && (
             <button
               onClick={handleSignOut}
@@ -76,10 +76,10 @@ export default function AppNavbar() {
       {open && (
         <div className="md:hidden">
           <div className="container-px space-y-1 border-t border-slate-100 bg-white px-5 py-4">
-            <Link to="/dashboard" onClick={() => setOpen(false)} className="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700">Dashboard</Link>
-            <Link to="/issues" onClick={() => setOpen(false)} className="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700">My Issues</Link>
+            <Link to={isAuthority ? '/authority' : '/dashboard'} onClick={() => setOpen(false)} className="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700">Dashboard</Link>
+            {isAuthority ? <><Link to="/authority?status=pending" onClick={() => setOpen(false)} className="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700">Pending / Reported</Link><Link to="/authority?status=in_progress" onClick={() => setOpen(false)} className="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700">In Progress</Link></> : <Link to="/issues" onClick={() => setOpen(false)} className="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700">My Issues</Link>}
             <Link to="/about" onClick={() => setOpen(false)} className="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700">About</Link>
-            <Link to="/report" onClick={() => setOpen(false)} className="btn-primary mt-2 w-full">Report an Issue</Link>
+            {!isAuthority && <Link to="/report" onClick={() => setOpen(false)} className="btn-primary mt-2 w-full">Report an Issue</Link>}
             {user && (
               <button onClick={() => { setOpen(false); handleSignOut() }} className="btn-ghost mt-2 w-full">Sign Out</button>
             )}

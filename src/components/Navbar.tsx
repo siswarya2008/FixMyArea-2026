@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Logo from './Logo'
+import { useAuth } from '../context/AuthContext'
 
 const NAV_LINKS = [
   { label: 'How It Works', to: '/about', hash: '#how-it-works' },
@@ -9,6 +10,8 @@ const NAV_LINKS = [
 ]
 
 export default function Navbar() {
+  const { role } = useAuth()
+  const isAuthority = role === 'authority'
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
 
@@ -48,9 +51,7 @@ export default function Navbar() {
           <Link to="/signin" className="btn-ghost !py-2.5 !px-5 text-sm">
             Sign In
           </Link>
-          <Link to="/report" className="btn-primary !py-2.5 !px-5 text-sm">
-            Report an Issue
-          </Link>
+          {!isAuthority && <Link to="/report" className="btn-primary !py-2.5 !px-5 text-sm">Report an Issue</Link>}
         </div>
 
         {/* Mobile toggle */}
@@ -92,13 +93,7 @@ export default function Navbar() {
             >
               Sign In
             </Link>
-            <Link
-              to="/report"
-              onClick={() => setOpen(false)}
-              className="btn-primary mt-2 w-full"
-            >
-              Report an Issue
-            </Link>
+            {!isAuthority && <Link to="/report" onClick={() => setOpen(false)} className="btn-primary mt-2 w-full">Report an Issue</Link>}
           </div>
         </div>
       )}

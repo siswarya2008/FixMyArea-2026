@@ -39,6 +39,11 @@ export default function ReportIssue() {
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')
   const [location, setLocation] = useState('')
+  const [latitude, setLatitude] = useState<number | null>(null)
+  const [longitude, setLongitude] = useState<number | null>(null)
+  const [detectedAddress, setDetectedAddress] = useState('')
+  const [locationLoading, setLocationLoading] = useState(false)
+  const [locationError, setLocationError] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [loading, setLoading] = useState(false)
@@ -72,6 +77,56 @@ export default function ReportIssue() {
     return Object.keys(next).length === 0
   }
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Location is not supported by this browser. Please enter a location manually.')
+      return
+    }
+
+    setLocationLoading(true)
+    setLocationError('')
+
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const nextLatitude = Number(coords.latitude.toFixed(6))
+        const nextLongitude = Number(coords.longitude.toFixed(6))
+        const coordinateLabel = `Latitude: ${nextLatitude}, Longitude: ${nextLongitude}`
+
+        setLatitude(nextLatitude)
+        setLongitude(nextLongitude)
+        setLocation(coordinateLabel)
+        setDetectedAddress('')
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${nextLatitude}&lon=${nextLongitude}`,
+          )
+          if (!response.ok) throw new Error('Reverse geocoding failed')
+          const result = await response.json()
+          const address = typeof result.display_name === 'string' ? result.display_name : ''
+          if (address) {
+            setDetectedAddress(address)
+            setLocation(address)
+          }
+        } catch {
+          // Coordinates remain available when address lookup is unavailable.
+        } finally {
+          setLocationLoading(false)
+        }
+      },
+      (positionError) => {
+        const message = positionError.code === positionError.PERMISSION_DENIED
+          ? 'Location permission was denied. Please allow access or enter a location manually.'
+          : positionError.code === positionError.TIMEOUT
+            ? 'Location detection timed out. Please try again or enter a location manually.'
+            : 'Unable to detect your location. Please try again or enter it manually.'
+        setLocationError(message)
+        setLocationLoading(false)
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+    )
+  }
+
   const readFileAsDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
@@ -98,7 +153,13 @@ export default function ReportIssue() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ image: imageDataUrl, filename: imageFile.name }),
+        body: JSON.stringify({
+          image: imageDataUrl,
+          filename: imageFile.name,
+          latitude,
+          longitude,
+          location: location.trim(),
+        }),
       })
 
       const payload = await response.json()
@@ -176,6 +237,8 @@ export default function ReportIssue() {
           description: description.trim(),
           category,
           location: location.trim(),
+          lat: latitude,
+          lng: longitude,
           image_url: imageUrl,
         })
         .select('id')
@@ -270,15 +333,40 @@ export default function ReportIssue() {
 
             {/* Location */}
             <div>
-              <label htmlFor="location" className="block text-sm font-semibold text-slate-700">Location</label>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label htmlFor="location" className="block text-sm font-semibold text-slate-700">Location</label>
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={locationLoading || loading}
+                  className="btn-ghost !px-3 !py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {locationLoading ? 'Detecting location…' : '📍 Use My Current Location'}
+                </button>
+              </div>
               <input
                 id="location"
                 type="text"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(e) => {
+                  setLocation(e.target.value)
+                  setLatitude(null)
+                  setLongitude(null)
+                  setDetectedAddress('')
+                }}
                 placeholder="e.g. 123 Main Street, Sector 14"
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100"
               />
+              {locationLoading && <p className="mt-2 text-sm text-slate-500">Requesting your current location…</p>}
+              {locationError && <p className="mt-2 text-sm text-red-600">{locationError}</p>}
+              {latitude !== null && longitude !== null && !locationLoading && (
+                <div className="mt-3 rounded-xl border border-leaf-100 bg-leaf-50 px-4 py-3 text-sm text-leaf-800">
+                  <p className="font-semibold">✓ Location detected</p>
+                  <p className="mt-1">Latitude: {latitude}</p>
+                  <p>Longitude: {longitude}</p>
+                  {detectedAddress && <p className="mt-1">Address: {detectedAddress}</p>}
+                </div>
+              )}
               {errors.location && <p className="mt-1.5 text-xs text-red-600">{errors.location}</p>}
             </div>
 

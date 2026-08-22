@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import Logo from './Logo'
+import { useAuth } from '../context/AuthContext'
 
 const FOOTER_LINKS = [
   {
@@ -59,6 +60,7 @@ const SOCIALS = [
 ]
 
 export default function Footer() {
+  const { role } = useAuth()
   return (
     <footer className="border-t border-slate-100 bg-slate-50">
       <div className="container-px py-16">
@@ -92,7 +94,7 @@ export default function Footer() {
             <div key={col.title}>
               <h3 className="text-sm font-semibold text-slate-900">{col.title}</h3>
               <ul className="mt-4 space-y-3">
-                {col.links.map((link) => (
+                {col.links.filter((link) => role !== 'authority' || link.to !== '/report').map((link) => (
                   <li key={link.label}>
                     <Link
                       to={link.to}

@@ -5,6 +5,7 @@ import './index.css'
 
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import RoleRoute from './components/RoleRoute'
 import LandingPage from './pages/LandingPage'
 import ReportIssue from './pages/ReportIssue'
 import SignIn from './pages/SignIn'
@@ -14,6 +15,7 @@ import Dashboard from './pages/Dashboard'
 import Issues from './pages/Issues'
 import IssueDetail from './pages/IssueDetail'
 import About from './pages/About'
+import AuthorityDashboard from './pages/AuthorityDashboard'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -28,25 +30,26 @@ createRoot(document.getElementById('root')!).render(
           <Route
             path="/report"
             element={
-              <ProtectedRoute>
+              <RoleRoute role="citizen">
                 <ReportIssue />
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
+          <Route path="/authority" element={<RoleRoute role="authority"><AuthorityDashboard /></RoleRoute>} />
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <RoleRoute role="citizen">
                 <Dashboard />
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/issues"
             element={
-              <ProtectedRoute>
+              <RoleRoute role="citizen">
                 <Issues />
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
           <Route

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import Reveal from './Reveal'
+import { useAuth } from '../context/AuthContext'
 
 export default function CTA() {
+  const { role } = useAuth()
   return (
     <section id="report" className="py-20 lg:py-28">
       <div className="container-px">
@@ -15,12 +17,12 @@ export default function CTA() {
               Join thousands of citizens making their neighborhoods cleaner, safer, and better — one report at a time.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Link to="/report" className="btn-primary">
+              {role !== 'authority' && <Link to="/report" className="btn-primary">
                 Report an Issue
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </Link>
+              </Link>}
               <Link to="/about" className="btn-ghost">
                 Learn more
               </Link>

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import AppNavbar from '../components/AppNavbar'
 import Footer from '../components/Footer'
 import Reveal from '../components/Reveal'
+import { useAuth } from '../context/AuthContext'
 
 const VALUES = [
   { title: 'Transparency', description: 'Every report is public, trackable, and accountable — no more disappearing complaints.' },
@@ -11,6 +12,7 @@ const VALUES = [
 ]
 
 export default function About() {
+  const { role } = useAuth()
   return (
     <div className="min-h-screen bg-white">
       <AppNavbar />
@@ -68,7 +70,7 @@ export default function About() {
                 Join thousands of citizens turning everyday problems into measurable progress.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-                <Link to="/report" className="btn-primary">Report an Issue</Link>
+                {role !== 'authority' && <Link to="/report" className="btn-primary">Report an Issue</Link>}
                 <Link to="/signup" className="btn-ghost">Create an account</Link>
               </div>
             </div>

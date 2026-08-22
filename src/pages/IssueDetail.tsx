@@ -14,6 +14,7 @@ interface Issue {
   image_url: string | null
   created_at: string
   updated_at: string
+  resolution_note: string | null
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -45,10 +46,14 @@ const STATUS_FLOW = ['reported', 'under_review', 'in_progress', 'resolved']
 export default function IssueDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const isAuthority = role === 'authority'
   const [issue, setIssue] = useState<Issue | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [status, setStatus] = useState('reported')
+  const [updating, setUpdating] = useState(false)
+  const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -65,11 +70,35 @@ export default function IssueDetail() {
         setError('Issue not found.')
       } else {
         setIssue(data)
+        setStatus(data.status)
       }
       setLoading(false)
     }
     load()
   }, [id, user])
+
+  const handleStatusUpdate = async () => {
+    if (!id || !isAuthority || !issue) return
+    setUpdating(true)
+    setFeedback('')
+    const resolutionNote = status === 'resolved'
+      ? `The reported ${(CATEGORY_LABELS[issue.category] ?? issue.category).toLowerCase()} issue has been addressed and marked as resolved by the concerned authority.`
+      : null
+    const { data, error: updateError } = await supabase
+      .from('issues')
+      .update({ status, resolution_note: resolutionNote })
+      .eq('id', id)
+      .select('*')
+      .single()
+
+    if (updateError) {
+      setFeedback(updateError.message)
+    } else {
+      setIssue(data)
+      setFeedback('Issue status updated successfully.')
+    }
+    setUpdating(false)
+  }
 
   const currentStep = issue ? STATUS_FLOW.indexOf(issue.status) : -1
 
@@ -88,7 +117,7 @@ export default function IssueDetail() {
         <AppNavbar />
         <div className="container-px py-12 pt-32 text-center">
           <p className="text-lg text-slate-600">{error || 'Issue not found.'}</p>
-          <Link to="/issues" className="btn-primary mt-4">Back to Issues</Link>
+          <Link to={isAuthority ? '/authority' : '/issues'} className="btn-primary mt-4">Back to Issues</Link>
         </div>
       </div>
     )
@@ -130,6 +159,27 @@ export default function IssueDetail() {
             <h2 className="text-lg font-semibold text-slate-900">Description</h2>
             <p className="mt-3 whitespace-pre-wrap leading-relaxed text-slate-600">{issue.description}</p>
           </div>
+
+          {isAuthority && (
+            <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-6">
+              <h2 className="text-lg font-semibold text-slate-900">Update Issue</h2>
+              <label htmlFor="issue-status" className="mt-4 block text-sm font-semibold text-slate-700">Status</label>
+              <select id="issue-status" value={status} onChange={(event) => setStatus(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
+                {STATUS_FLOW.map((value) => <option key={value} value={value}>{STATUS_LABELS[value]}</option>)}
+              </select>
+              <button type="button" onClick={handleStatusUpdate} disabled={updating} className="btn-primary mt-4 disabled:cursor-not-allowed disabled:opacity-60">
+                {updating ? 'Updating…' : 'Update Status'}
+              </button>
+              {feedback && <p className={`mt-3 text-sm ${feedback.includes('successfully') ? 'text-leaf-700' : 'text-red-600'}`}>{feedback}</p>}
+            </div>
+          )}
+
+          {issue.resolution_note && (
+            <div className="mt-6 rounded-2xl border border-leaf-100 bg-leaf-50 p-6">
+              <h2 className="text-lg font-semibold text-slate-900">Resolution</h2>
+              <p className="mt-3 whitespace-pre-wrap leading-relaxed text-slate-600">{issue.resolution_note}</p>
+            </div>
+          )}
 
           {/* Status timeline */}
           <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-6">
