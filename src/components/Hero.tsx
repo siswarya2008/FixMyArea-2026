@@ -58,6 +58,26 @@ export default function Hero() {
             </Link>
           </div>
 
+          <div className="mt-8">
+            <p className="text-sm font-semibold text-slate-700">Choose how you want to sign in</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Link
+                to="/signin"
+                state={{ from: '/dashboard', loginType: 'user' }}
+                className="rounded-xl border border-brand-200 bg-brand-50 px-5 py-3 text-sm font-semibold text-brand-700 transition-colors hover:border-brand-300 hover:bg-brand-100"
+              >
+                User
+              </Link>
+              <Link
+                to="/signin"
+                state={{ from: '/authority', loginType: 'authority' }}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+              >
+                Authority
+              </Link>
+            </div>
+          </div>
+
           {/* Issue tags */}
           <ul className="mt-10 flex flex-wrap gap-2.5">
             {ISSUE_TAGS.map((tag) => (

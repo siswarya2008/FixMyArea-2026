@@ -113,7 +113,7 @@ export default function AuthorityDashboard() {
           <div className="mt-5 rounded-2xl border border-slate-100 bg-white p-10 text-center text-slate-500">No issues found.</div>
         ) : (
           <div className="mt-5 space-y-3">
-            {visibleIssues.slice(0, filter === 'all' ? 5 : undefined).map((issue) => (
+            {visibleIssues.map((issue) => (
               <div key={issue.id} className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                 {issue.image_url ? <img src={issue.image_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" /> : <div className="h-16 w-16 shrink-0 rounded-xl bg-slate-100" />}
                 <div className="min-w-0 flex-1">

@@ -6,7 +6,9 @@ import Logo from '../components/Logo'
 export default function SignIn() {
   const navigate = useNavigate()
   const location = useLocation()
-  const from = (location.state as { from?: string } | null)?.from ?? '/dashboard'
+  const signInState = location.state as { from?: string; loginType?: 'user' | 'authority' } | null
+  const from = signInState?.from ?? '/dashboard'
+  const loginType = signInState?.loginType ?? 'user'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -45,7 +47,9 @@ export default function SignIn() {
 
           <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/50 sm:p-10">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">Welcome back</h1>
-            <p className="mt-2 text-sm text-slate-600">Sign in to track your reports and keep your community moving.</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Sign in as a {loginType === 'authority' ? 'authority' : 'user'} to continue.
+            </p>
 
             {error && (
               <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
